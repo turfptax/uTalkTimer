@@ -23,40 +23,39 @@ The project depends on the `aioespnow` and `ssd1306` libraries for asynchronous 
 
 1. **Connect to Your MicroPython Device**:
 
-   First, connect to your device using `mpremote`. In your terminal, type:
+   First, make sure to close any active IDE connections to the ESP32 micropython device:
 
    ```bash
-   mpremote connect <port_or_address>
+   mpremote mip install aioespnow
+   mpremote mip install ssd1306
    ```
 
-   Replace `<port_or_address>` with the appropriate connection port or network address of your MicroPython device.
+2. **Verify Libraries**:
 
-2. **Copy Libraries**:
-
-   Use `mpremote` to copy the required libraries to your device. Place the `aioespnow.mpy` and `ssd1306.mpy` files in the `/lib` folder on your device:
+   Use thonny or another IDE to varify that the two files are stored in a 'lib' directory with the .mpy extension:
 
    ```bash
-   mpremote cp aioespnow.mpy :/lib/
-   mpremote cp ssd1306.mpy :/lib/
+   lib
+       aioespnow.mpy
+       ssd1306.mpy
    ```
+You should see `aioespnow.mpy` and `ssd1306.mpy` listed.
 
 ### Verifying the Installation
 
-After installing the libraries, you can check if they are correctly placed by listing the files in the `/lib` directory on your device:
+After installing the libraries, you can check if they are correctly placed by listing the files in the `/lib` directory on your device by trying to import the libraries:
 
 ```bash
-mpremote ls /lib
+import aioespnow
+import ssd1306
 ```
-
-You should see `aioespnow.mpy` and `ssd1306.mpy` listed.
 
 ## Running the Project
 
 Once all prerequisites and required libraries are installed, you can upload the main script to your device and run it using `mpremote`:
 
 ```bash
-mpremote cp uTT.py :/main.py  # Copy the main project file
-mpremote repl                 # Open the MicroPython REPL
+import uTT
 ```
 
 In the REPL, you can manually import and run your project or simply reboot your device to start the main application.
