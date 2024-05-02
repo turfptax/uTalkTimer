@@ -5,6 +5,7 @@ from machine import Pin, I2C, PWM
 import time
 import ssd1306
 import gc
+import utime
 
 ram = []
 led = False
@@ -95,14 +96,15 @@ def init_espnow():
     print('initializing espnow()')
     esp = aioespnow.AIOESPNow()
     esp.active(True)
+    
     return esp
 
 async def send_message(peer,msg):
     try:
-        msg = msg.encode('utf-8')
+        await esp.asend(peer, msg)
     except:
         print('message already utf-8?')
-    await esp.asend(peer, msg)
+    
 
 async def wait_for_message(esp):
     waits = 0
@@ -119,14 +121,23 @@ async def wait_for_message(esp):
                 print(f"Mac: {mac}")
                 frint(f"Received message: {msg}")
                 frint(f"Mac: {mac}")
+                process_message(mac,msg)
+                pulse(1,0)
         except Exception as e:
             print("An error occurred:", e)
             # Handle the error or perform a controlled reset/retry
 
-def process_message(msg):
+def add_peer(mac):
     try:
-        if msg == b'ping':
+        esp.add_peer(mac)
+    except Exception as e:
+            print(f"Peer Add Error: {e}")
+    
+def process_message(mac,msg):
+    try:
+        if msg == 'ping':
             print("Ping received, responding...")
+            asyncio.create_task(send_message(mac,'pong'))
             # Your response code here
     except Exception as e:
         print("Error processing message:", e)
@@ -212,7 +223,12 @@ def handle_button_press(pin):
             print('Exit')
             frint('Exit')
                     
-    
+async def periodic_task(interval):
+    while True:
+        print("Periodic action triggered")
+        # Perform periodic action here
+        await asyncio.wait_for_ms(interval)
+        frint('TIME!')
     
 def main():
     frint('main()')
@@ -221,12 +237,15 @@ def main():
     
     wlan = setup_network()
     esp = init_espnow()
-
+    
+    asyncio.create_task(periodic_task(1000))
     loop = asyncio.get_event_loop()
     loop.create_task(wait_for_message(esp))
+    
     #try:
-    while True:
-        loop.run_forever()
+    #while True:
+        #print('----------------------------------------------------------')
+    loop.run_forever()
     #except KeyboardInterrupt:
     #    print("Program interrupted by user")
     #    loop.close()  # Properly close the loop if interrupted
