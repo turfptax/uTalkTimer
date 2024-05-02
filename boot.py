@@ -96,7 +96,11 @@ def init_espnow():
     print('initializing espnow()')
     esp = aioespnow.AIOESPNow()
     esp.active(True)
-    
+    bcast = b'\xff' *6
+    try:
+        esp.add_peer(bcast)
+    except Exception as e:
+        print(f"Failed to add peer: {e}")
     return esp
 
 async def send_message(peer,msg):
