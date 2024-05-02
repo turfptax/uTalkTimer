@@ -7,6 +7,9 @@ import ssd1306
 import gc
 import utime
 
+
+esp = False
+wlan = False
 ram = []
 led = False
 ledPIN = 15
@@ -100,15 +103,15 @@ def init_espnow():
     try:
         esp.add_peer(bcast)
     except Exception as e:
-        print(f"Failed to add peer: {e}")
+        print(f'Peer Add Error: {e}')
     return esp
 
 async def send_message(peer,msg):
-    try:
-        await esp.asend(peer, msg)
-    except:
-        print('message already utf-8?')
-    
+    global esp
+    frint('beg send')
+    await esp.asend(peer, msg)
+    await asyncio.sleep_ms(100)
+    frint('sent!')
 
 async def wait_for_message(esp):
     waits = 0
@@ -123,9 +126,9 @@ async def wait_for_message(esp):
                 msg = msg.decode('utf-8')
                 print(f"Received message: {msg}")
                 print(f"Mac: {mac}")
-                frint(f"Received message: {msg}")
-                frint(f"Mac: {mac}")
-                process_message(mac,msg)
+                frint(f"msg:{msg}")
+                frint(f"Mac:{mac}")
+                process_message(mac,msg,esp)
                 pulse(1,0)
         except Exception as e:
             print("An error occurred:", e)
@@ -141,8 +144,7 @@ def process_message(mac,msg):
     try:
         if msg == 'ping':
             print("Ping received, responding...")
-            asyncio.create_task(send_message(mac,'pong'))
-            # Your response code here
+            #asyncio.create_task(send_message(mac,'pong'))
     except Exception as e:
         print("Error processing message:", e)
 
@@ -159,15 +161,16 @@ last_interrupt_time = 0
 def button_handler(pin):
     global last_interrupt_time
     current_time = time.ticks_ms()
-    if time.ticks_diff(current_time, last_interrupt_time) > 200:  # Debounce period of 200 ms
+    print(current_time,last_interrupt_time)
+    if time.ticks_diff(current_time, last_interrupt_time) > 400:  # Debounce period of 400 ms
         print(f"Button {pin} pressed, handling interrupt")
         #asyncio.create_task(handle_button_press(pin))
         handle_button_press(pin)
         last_interrupt_time = current_time
 
-def button_pressed_handler(pin):
-    print("Button pressed, handling interrupt")
-    asyncio.create_task(send_led_on_message())
+#def button_pressed_handler(pin):
+#    print("Button pressed, handling interrupt")
+#    asyncio.create_task(send_led_on_message())
         
 def setup_button_interrupts():
     global button1, button2, button3
@@ -185,6 +188,7 @@ def handle_button_press(pin):
     global menu
     global button1, button2, button3
     global current_active
+    global esp
     time.sleep(.1)
     length = len(menu)
     for i, x in enumerate(menu):
@@ -207,13 +211,12 @@ def handle_button_press(pin):
               oled.text(x[0],0,i*8,x[2])
         oled.show()
     elif pin == button2:
-        frint('button2')
         if current_active == 0:
             print('Ping All')
-            frint('Ping All')
-            asyncio.create_task(send_message(b'\xff'*6,'PING'))
-            oled.fill(0)
-            oled.show()
+            #frint('Pinging All')
+            #asyncio.create_task(send_message(b'\xff'*6,'PING'))
+            esp.send(b'\xff'*6,'PING')
+            frint('sent p-broadcast')
         if current_active == 1:
             print('Raise Hand')
             frint('Raise Hand')
@@ -235,6 +238,8 @@ async def periodic_task(interval):
         frint('TIME!')
     
 def main():
+    global esp
+    global wlan
     frint('main()')
     setup_button_interrupts()
     pulse(1,2)
@@ -242,13 +247,9 @@ def main():
     wlan = setup_network()
     esp = init_espnow()
     
-    asyncio.create_task(periodic_task(1000))
+    #asyncio.create_task(periodic_task(1000))
     loop = asyncio.get_event_loop()
     loop.create_task(wait_for_message(esp))
-    
-    #try:
-    #while True:
-        #print('----------------------------------------------------------')
     loop.run_forever()
     #except KeyboardInterrupt:
     #    print("Program interrupted by user")
