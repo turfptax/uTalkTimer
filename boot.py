@@ -1,3 +1,13 @@
+#Old Boot Tester for TTRV
+#import ttrv
+#ttrv.mainloop()
+#ttrv.send_all('Hello World')
+#print('end of boot.py')
+
+# Main Boot.py For TTRV
+# May 5 2024 by TURFPTAx
+# Made as a prototype for my Think Tank Discussion
+
 import network
 import aioespnow
 import asyncio
@@ -128,23 +138,29 @@ async def wait_for_message(esp):
                 print(f"Mac: {mac}")
                 frint(f"msg:{msg}")
                 frint(f"Mac:{mac}")
+                try:
+                    add_peer(mac,esp)
+                except Exception as e:
+                    print(f'failed to add peer: {e}')
                 process_message(mac,msg,esp)
                 pulse(1,0)
         except Exception as e:
             print("An error occurred:", e)
             # Handle the error or perform a controlled reset/retry
 
-def add_peer(mac):
+def add_peer(mac,esp):
     try:
         esp.add_peer(mac)
     except Exception as e:
             print(f"Peer Add Error: {e}")
     
-def process_message(mac,msg):
+def process_message(mac,msg,esp):
     try:
-        if msg == 'ping':
-            print("Ping received, responding...")
+        if msg == 'ping' or msg == 'PING':
+            print("Ping received, Responding...")
             #asyncio.create_task(send_message(mac,'pong'))
+            esp.send(mac,'pong')
+            frint('pong sent')
     except Exception as e:
         print("Error processing message:", e)
 
