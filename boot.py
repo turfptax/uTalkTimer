@@ -1,91 +1,98 @@
-#Old Boot Tester for TTRV
-#import ttrv
-#ttrv.mainloop()
-#ttrv.send_all('Hello World')
-#print('end of boot.py')
+# boot.py for TTRV Version 0.1 PCB
+# PCB3 in design phase
+# 
 
-# Main Boot.py For TTRV
-# May 5 2024 by TURFPTAx
-# Made as a prototype for my Think Tank Discussion
 
 import network
 import aioespnow
 import asyncio
-from machine import Pin, I2C, PWM
 import time
-import ssd1306
 import gc
-import utime
+import time
+from machine import Pin, SoftI2C, PWM
+import ssd1306
 
-
-esp = False
+mem_free = 0
+mem_alloc = 0
+current_time = time.time()
+time_markers = []
 wlan = False
+esp = False
 ram = []
 led = False
 ledPIN = 15
-sclPIN = 9
-sdaPIN = 8
+scl = 9
+sda = 8
 oledWIDTH = 128
 oledHEIGHT =  64
 oledROTATION = 180
 
-menu = [['[0] Ping All',0,1],['[1] Raise Hand',1,1],['[2] Talk Next',2,1],['[3] Start Timer',3,0],['[4] Exit',4,1]]
-# Initiate Device Buttons Pins 4,5,6 esp32-c3 supermini
-LeftPin = 4
-MiddlePin = 5
-RightPin = 6
+peers = []
+
+bcast = b'\xff' *6
+peer = b'\xec\xda;3Y\xb8'
+menu = [['[0] Ping All',0,1],['[1] Raise Hand',1,1],['[2] Peer Table',2,1],['[3] Start Timer',3,0],['[4] Exit',4,1]]
+user_list_menu = []
 
 #motor test
 motorPin = 0
 pwm = PWM(Pin(motorPin))
 pwm.freq(1000)
+pwm.duty(0)
 
-def initOLED(scl=Pin(sclPIN),sda=Pin(sdaPIN),led=led,w=oledWIDTH,h=oledHEIGHT):
-  print('scl = ',scl)
-  print('sda = ',sda)
-  oled = False
-  i2c = False
-  try:
-    i2c = I2C(scl=scl,sda=sda)
-  except:
-    print('i2c failed check pins scl sda')
+def initOLED(scl=scl,sda=sda,led=led,w=oledWIDTH,h=oledHEIGHT):
+    print('scl = ',scl)
+    print('sda = ',sda)
+    oled = False
+    i2c = False
+    time.sleep(.5)
+    i2c = SoftI2C(scl=scl,sda=sda)
     try:
-      print('i2c.scan() = ',i2c.scan())
+        print('i2c.scan() = ',i2c.scan())
     except:
-      print('i2c.scan() failed')
-  if i2c:
-    try:
-      oled = ssd1306.SSD1306_I2C(w,h,i2c)
-      print("SSD1306 initialized[Y]")  
-      print('oled = ',oled)
-    except:
-      print("failed to initialize onboard SSD1306")
-  oled.rotate(False)
-  return oled
+        print('i2c.scan() failed')
+    if i2c:
+        try:
+            oled = ssd1306.SSD1306_I2C(w,h,i2c)
+            print("SSD1306 initialized[Y]")  
+            print('oled = ',oled)
+        except:
+            print("failed to initialize onboard SSD1306")
+    oled.rotate(False)
+    return oled
 
 oled = initOLED()
 
 def frint(text,oled=oled,ram=ram):
-  if oled:
-    if text:
-      text = str(text)
-      if len(text) <= 16:
-        ram.append(text)
-      else:
-        ram.append(text[0:5]+'..'+text[len(text)-9:])
-    oled.fill(0)
-    n = 0
-    for i in ram[-8:]:
-      oled.text(i,0,n*8)
-      n+=1
-    if len(ram) > 9:
-      ram = ram[-9:]
-    gc.collect()
-    oled.show()
-    print('f:> ',ram[-1])
-  else:
-    print('f:< ',text)
+    if oled:
+        if text:
+            text = str(text)
+            if len(text) <= 16:
+                ram.append(text)
+            else:
+                ram.append(text[0:5]+'..'+text[len(text)-9:])
+        oled.fill(0)
+        n = 0
+        for i in ram[-8:]:
+            oled.text(i,0,n*8)
+            n+=1
+        if len(ram) > 9:
+            ram = ram[-9:]
+        gc.collect()
+        oled.show()
+        print('f:> ',ram[-1])
+    else:
+        print('f:< ',text)
 
+def time_display(time,oled=oled):
+    hours = time // 3600
+    remaining_seconds = time % 3600
+    minutes = remaining_seconds // 60
+    time = remaining_seconds % 60
+    oled.fill_rect(0,7*8,128,8,0)
+    oled.text(f"{hours:02}:{minutes:02}:{time:02}",0,7*8)
+    oled.show()
+    
 def pulse(number,pattern,pwm=pwm):
     patterns = [[(1023, 0.10), (0, 0.10)],
                 [(1023,0.05),(750,0.15),(500,0.25),(0,0.05)],
@@ -97,83 +104,71 @@ def pulse(number,pattern,pwm=pwm):
             time.sleep(duration)
     pwm.duty(0)
 
-def setup_network(interface_type=network.STA_IF):
-    print('setting up network')
-    wlan = network.WLAN(interface_type)
-    wlan.active(True)
-    if interface_type == network.STA_IF:
-        wlan.disconnect()  # Only for ESP8266
-    return wlan
-
-def init_espnow():
-    print('initializing espnow()')
-    esp = aioespnow.AIOESPNow()
-    esp.active(True)
-    bcast = b'\xff' *6
-    try:
-        esp.add_peer(bcast)
-    except Exception as e:
-        print(f'Peer Add Error: {e}')
-    return esp
-
-async def send_message(peer,msg):
-    global esp
-    frint('beg send')
-    await esp.asend(peer, msg)
-    await asyncio.sleep_ms(100)
-    frint('sent!')
-
-async def wait_for_message(esp):
-    waits = 0
+# Send a periodic ping to a peer
+async def heartbeat(e,peer,period):
     while True:
-        try:
-            print("Waiting for a message...")
-            frint('waiting...')
-            waits += 1
-            print(f"waits: {waits}")
-            mac, msg = esp.recv()  # Asynchronously wait for a message
-            if msg:
-                msg = msg.decode('utf-8')
-                print(f"Received message: {msg}")
-                print(f"Mac: {mac}")
-                frint(f"msg:{msg}")
-                frint(f"Mac:{mac}")
-                try:
-                    add_peer(mac,esp)
-                except Exception as e:
-                    print(f'failed to add peer: {e}')
-                process_message(mac,msg,esp)
-                pulse(1,0)
-        except Exception as e:
-            print("An error occurred:", e)
-            # Handle the error or perform a controlled reset/retry
+        if not await e.asend(peer, b'ping'):
+            print("Heartbeat: peer not responding:", peer)
+        else:
+            print("Heartbeat: ping", peer)
+        await asyncio.sleep(period)
 
-def add_peer(mac,esp):
+def setup_network():
+    print('setting up network')
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    e = aioespnow.AIOESPNow()
+    e.active(True)
+    time.sleep(1)
+    return(e)
+
+def memory_monitor():
+    global mem_free, mem_alloc
+    mem_free = gc.mem_free()
+    mem_alloc = gc.mem_alloc()
+    print("Free Memory:", mem_free, "bytes")
+    print("Allocated Memory:", mem_alloc, "bytes")
+        
+async def timekeeper():
+    global current_time, time_markers
+    boot_time = time.time()
+    time_markers.append(['Boot',boot_time])
+    while True:
+        # Update current time
+        current_time = time.time()
+        print('current_time', current_time)
+        time_display(current_time)
+        memory_monitor()
+        # Update time markers (if needed)
+        time_markers.append(current_time - boot_time)  # Relative to boot time
+        await asyncio.sleep(1)
+
+def process_message(mac,msg):
+    print('mac',mac,'msg',msg)
+    frint(mgs)
+    pulse(1,0)
+
+def add_peer(mac):
+    global peers
+    global esp
     try:
         esp.add_peer(mac)
+        peers.append(mac)
     except Exception as e:
             print(f"Peer Add Error: {e}")
-    
-def process_message(mac,msg,esp):
-    try:
-        if msg == 'ping' or msg == 'PING':
-            print("Ping received, Responding...")
-            #asyncio.create_task(send_message(mac,'pong'))
-            esp.send(mac,'pong')
-            frint('pong sent')
-    except Exception as e:
-        print("Error processing message:", e)
 
-    
-def update_display_menu():
-    # This function would update the display based on the current menu state
-    print("Display updated with current menu state")
-    #mainMenu()
+async def receiver(e):
+    async for mac, msg in e:
+        print("echo:",msg)
+        process_message(mac,msg)
+        try:
+            await e.asend(mac, msg)
+        except OSError as err:
+            if len(err.args) > 1 and err.args[1] == 'ESP_ERR_ESPNOW_NOT_FOUND':
+                e.add_peer(mac)
+                await e.asend(mac, msg)
 
-
-# Global variable to avoid bouncing issues
 last_interrupt_time = 0
-
 def button_handler(pin):
     global last_interrupt_time
     current_time = time.ticks_ms()
@@ -181,13 +176,11 @@ def button_handler(pin):
     if time.ticks_diff(current_time, last_interrupt_time) > 400:  # Debounce period of 400 ms
         print(f"Button {pin} pressed, handling interrupt")
         #asyncio.create_task(handle_button_press(pin))
-        handle_button_press(pin)
-        last_interrupt_time = current_time
-
-#def button_pressed_handler(pin):
-#    print("Button pressed, handling interrupt")
-#    asyncio.create_task(send_led_on_message())
+        main_menu(pin)
         
+def button_pressed(pin):
+    print("Button on pin", pin, "pressed")
+
 def setup_button_interrupts():
     global button1, button2, button3
     button1 = Pin(4, Pin.IN, Pin.PULL_UP)
@@ -197,14 +190,12 @@ def setup_button_interrupts():
     button2.irq(trigger=Pin.IRQ_FALLING, handler=button_handler)
     button3.irq(trigger=Pin.IRQ_FALLING, handler=button_handler)
     print("Button interrupts set up")
-    
-current_active = 0
 
-def handle_button_press(pin):
+def main_menu(pin):
     global menu
     global button1, button2, button3
     global current_active
-    global esp
+    global e
     time.sleep(.1)
     length = len(menu)
     for i, x in enumerate(menu):
@@ -231,47 +222,48 @@ def handle_button_press(pin):
             print('Ping All')
             #frint('Pinging All')
             #asyncio.create_task(send_message(b'\xff'*6,'PING'))
-            esp.send(b'\xff'*6,'PING')
+            e.send(b'\xff'*6,'PING')
             frint('sent p-broadcast')
         if current_active == 1:
             print('Raise Hand')
+            #esp.send(b'x\ff'*6,'Raise Hand')
             frint('Raise Hand')
         elif current_active == 2:
-            print('Talk Next')
-            frint('Talk Next')
+            print('User List')
+            print(esp.peers_table)
+            print(esp.get_peers())
+            print('end Peers Table')
+            frint('peers table')
         elif current_active == 3:
             print('Start Timer')
+            #esp.send(b'x\ff'*6,'Start Timer')
             frint('Start Timer')
         elif current_active == 4:
             print('Exit')
             frint('Exit')
-                    
-async def periodic_task(interval):
-    while True:
-        print("Periodic action triggered")
-        # Perform periodic action here
-        await asyncio.wait_for_ms(interval)
-        frint('TIME!')
-    
-def main():
-    global esp
-    global wlan
-    frint('main()')
-    setup_button_interrupts()
-    pulse(1,2)
-    
-    wlan = setup_network()
-    esp = init_espnow()
-    
-    #asyncio.create_task(periodic_task(1000))
-    loop = asyncio.get_event_loop()
-    loop.create_task(wait_for_message(esp))
-    loop.run_forever()
-    #except KeyboardInterrupt:
-    #    print("Program interrupted by user")
-    #    loop.close()  # Properly close the loop if interrupted
-    frint('after stuff')
-    print('after stuff')
 
-if __name__ == "__main__":
-    main()
+async def main(e, peer, timeout, period):
+    count = 0
+    stop = False
+    while not stop:
+        print(f'---------------------------------------------count: {count}')
+        asyncio.create_task(heartbeat(e, peer, period))
+        asyncio.create_task(receiver(e))
+        asyncio.create_task(timekeeper())
+        await asyncio.sleep(timeout)
+        count += 1
+
+print('start init of program')
+e = setup_network()
+print('e',e)
+if e.peer_count()[0] == 0:
+    try:
+        e.add_peer(peer)
+    except Exception as e:
+        print(f'Initial peer add error: {e}')
+setup_button_interrupts()
+print('post initializes')
+
+
+asyncio.run(main(e,peer,120,2))
+
