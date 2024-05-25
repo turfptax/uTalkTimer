@@ -189,6 +189,16 @@ def setup_button_interrupts():
     button3.irq(trigger=Pin.IRQ_FALLING, handler=button_handler)
     print("Button interrupts set up")
 
+def bytes_to_mac_address(bytes_key):
+    # Convert each byte to a two-digit hex string and join them with colons
+    return ':'.join(f'{b:02x}' for b in bytes_key)
+
+def show_peers(peers_table):
+    for key, (value1,value2) in peers_table.items():
+        mac_address = bytes_to_mac_address(key)
+        frint(mac_address)
+        frint(value1)
+
 def main_menu(pin):
     global menu
     global button1, button2, button3
@@ -227,11 +237,14 @@ def main_menu(pin):
             #esp.send(b'x\ff'*6,'Raise Hand')
             frint('Raise Hand')
         elif current_active == 2:
-            print('User List')
-            print(esp.peers_table)
-            print(esp.get_peers())
+            print('-----User List-----')
+            frint('-----PEERS-----')
+            peers_table = e.peers_table
+            show_peers(peers_table)
+            print(e.peers_table)
+            print(e.get_peers())
             print('end Peers Table')
-            frint('peers table')
+            
         elif current_active == 3:
             print('Start Timer')
             #esp.send(b'x\ff'*6,'Start Timer')
