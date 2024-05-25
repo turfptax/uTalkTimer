@@ -235,12 +235,15 @@ def main_menu(pin):
             print('Ping All')
             #frint('Pinging All')
             #asyncio.create_task(send_message(b'\xff'*6,'PING'))
-            e.asend(b'\xff'*6,'PING-ALL')
+            #e.asend(b'\xff'*6,'PING-ALL')
+            e.send(b'\xff'*6,'PING-ALL')
             frint('sent p-broadcast')
+            time.sleep(.5)
         if current_active == 1:
             print('Raise Hand')
             #esp.send(b'x\ff'*6,'Raise Hand')
             frint('Raise Hand')
+            time.sleep(.5)
         elif current_active == 2:
             print('-----User List-----')
             frint('-----PEERS-----')
@@ -249,15 +252,17 @@ def main_menu(pin):
             print(e.peers_table)
             print(e.get_peers())
             print('end Peers Table')
-            
+            time.sleep(.5)
         elif current_active == 3:
             print('Start Timer')
             time_markers.append(['START',time.time()])
             #esp.send(b'x\ff'*6,'Start Timer')
             frint('Start Timer')
+            time.sleep(.5)
         elif current_active == 4:
             print('Exit')
             frint('Exit')
+            time.sleep(.5)
 
 async def main(e, peer, timeout, period):
     count = 0
