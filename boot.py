@@ -281,4 +281,4 @@ setup_button_interrupts()
 print('post initializes')
 
 
-asyncio.run(main(e,bcast,120,2))
+asyncio.run(main(e,bcast,120,10))
