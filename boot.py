@@ -145,8 +145,9 @@ async def timekeeper():
 
 def process_message(mac,msg):
     print('mac',mac,'msg',msg)
-    frint(msg)
-    pulse(1,1)
+    if msg != b'ping' and msg != b'PING':
+        frint(msg)
+        pulse(1,1)
 
 def add_peer(mac):
     global peers
@@ -160,7 +161,7 @@ def add_peer(mac):
 async def receiver(e):
     async for mac, msg in e:
         print("echo:",msg)
-        process_message(mac,msg)
+        process_message(mac,bytes(msg))
         try:
             await e.asend(mac, msg)
         except OSError as err:
