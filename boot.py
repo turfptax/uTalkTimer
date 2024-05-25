@@ -145,7 +145,7 @@ async def timekeeper():
 
 def process_message(mac,msg):
     print('mac',mac,'msg',msg)
-    if msg != b'ping' and msg != b'PING':
+    if msg != b'ping' and msg != b'PING' and msg != b'RECV':
         frint(msg)
         pulse(1,1)
 
@@ -163,7 +163,8 @@ async def receiver(e):
         print("echo:",msg)
         process_message(mac,bytes(msg))
         try:
-            await e.asend(mac, msg)
+            if msg != 'RECV':
+                await e.asend(mac, 'RECV')
         except OSError as err:
             if len(err.args) > 1 and err.args[1] == 'ESP_ERR_ESPNOW_NOT_FOUND':
                 e.add_peer(mac)
@@ -234,7 +235,7 @@ def main_menu(pin):
             print('Ping All')
             #frint('Pinging All')
             #asyncio.create_task(send_message(b'\xff'*6,'PING'))
-            e.asend(b'\xff'*6,'PING')
+            e.asend(b'\xff'*6,'PING-ALL')
             frint('sent p-broadcast')
         if current_active == 1:
             print('Raise Hand')
@@ -281,4 +282,4 @@ setup_button_interrupts()
 print('post initializes')
 
 
-asyncio.run(main(e,bcast,120,10))
+asyncio.run(main(e,bcast,120,2))
