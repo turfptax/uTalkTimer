@@ -147,7 +147,9 @@ def process_message(mac,msg):
     print('mac',mac,'msg',msg)
     if msg != b'ping' and msg != b'PING' and msg != b'RECV':
         frint(msg)
-        pulse(1,1)
+        pulse(1,0)
+    if msg == b'RECV':
+        pulse(1,0)
 
 def add_peer(mac):
     global peers
@@ -209,7 +211,7 @@ def main_menu(pin):
     global current_active
     global e
     global time_markers
-    time.sleep(.1)
+    time.sleep(.3)
     length = len(menu)
     for i, x in enumerate(menu):
         if x[2] == 0:
