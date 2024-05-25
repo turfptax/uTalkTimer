@@ -1,14 +1,12 @@
-# boot.py for TTRV Version 0.1 PCB
+# boot.py for TTRV Version 2.0 PCB
 # PCB3 in design phase
 # 
-
 
 import network
 import aioespnow
 import asyncio
 import time
 import gc
-import time
 from machine import Pin, SoftI2C, PWM
 import ssd1306
 
@@ -35,7 +33,7 @@ menu = [['[0] Ping All',0,1],['[1] Raise Hand',1,1],['[2] Peer Table',2,1],['[3]
 user_list_menu = []
 
 #motor test
-motorPin = 0
+motorPin = 21
 pwm = PWM(Pin(motorPin))
 pwm.freq(1000)
 pwm.duty(0)
@@ -94,9 +92,9 @@ def time_display(time,oled=oled):
     oled.show()
     
 def pulse(number,pattern,pwm=pwm):
-    patterns = [[(1023, 0.10), (0, 0.10)],
-                [(1023,0.05),(750,0.15),(500,0.25),(0,0.05)],
-                [(500, 0.10), (750, 0.10), (1023, 0.2), (750, 0.15), (500, 0.10), (0, 0.15)]]
+    patterns = [[(1023, 0.05), (0, 0.05)],
+                [(1023,0.0025),(750,0.075),(500,0.0125),(0,0.0025)],
+                [(500, 0.05), (750, 0.05), (1023, 0.1), (750, 0.075), (500, 0.05), (0, 0.0725)]]
     # Define patterns as [duty, duration]
     for i in range(number):
         for duty, duration in patterns[pattern]:
@@ -126,8 +124,8 @@ def memory_monitor():
     global mem_free, mem_alloc
     mem_free = gc.mem_free()
     mem_alloc = gc.mem_alloc()
-    print("Free Memory:", mem_free, "bytes")
-    print("Allocated Memory:", mem_alloc, "bytes")
+    #print("Free Memory:", mem_free, "bytes")
+    #print("Allocated Memory:", mem_alloc, "bytes")
         
 async def timekeeper():
     global current_time, time_markers
@@ -146,7 +144,7 @@ async def timekeeper():
 def process_message(mac,msg):
     print('mac',mac,'msg',msg)
     frint(mgs)
-    pulse(1,0)
+    pulse(1,1)
 
 def add_peer(mac):
     global peers
@@ -173,7 +171,7 @@ def button_handler(pin):
     global last_interrupt_time
     current_time = time.ticks_ms()
     print(current_time,last_interrupt_time)
-    if time.ticks_diff(current_time, last_interrupt_time) > 400:  # Debounce period of 400 ms
+    if time.ticks_diff(current_time, last_interrupt_time) > 900:  # Debounce period of 400 ms
         print(f"Button {pin} pressed, handling interrupt")
         #asyncio.create_task(handle_button_press(pin))
         main_menu(pin)
@@ -222,7 +220,7 @@ def main_menu(pin):
             print('Ping All')
             #frint('Pinging All')
             #asyncio.create_task(send_message(b'\xff'*6,'PING'))
-            e.send(b'\xff'*6,'PING')
+            e.asend(b'\xff'*6,'PING')
             frint('sent p-broadcast')
         if current_active == 1:
             print('Raise Hand')
@@ -258,12 +256,11 @@ e = setup_network()
 print('e',e)
 if e.peer_count()[0] == 0:
     try:
-        e.add_peer(peer)
+        e.add_peer(bcast)
     except Exception as e:
         print(f'Initial peer add error: {e}')
 setup_button_interrupts()
 print('post initializes')
 
 
-asyncio.run(main(e,peer,120,2))
-
+asyncio.run(main(e,bcast,120,2))
