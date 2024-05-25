@@ -90,6 +90,7 @@ def time_display(time,oled=oled):
     oled.fill_rect(0,7*8,128,8,0)
     oled.text(f"{hours:02}:{minutes:02}:{time:02}",0,7*8)
     oled.show()
+    return f"{hours:02}:{minutes:02}:{time:02}"
     
 def pulse(number,pattern,pwm=pwm):
     patterns = [[(1023, 0.05), (0, 0.05)],
@@ -108,7 +109,7 @@ async def heartbeat(e,peer,period):
         if not await e.asend(peer, b'ping'):
             print("Heartbeat: peer not responding:", peer)
         else:
-            print("Heartbeat: ping", peer)
+            hb = True
         await asyncio.sleep(period)
 
 def setup_network():
@@ -134,11 +135,12 @@ async def timekeeper():
     while True:
         # Update current time
         current_time = time.time()
-        print('current_time', current_time)
-        time_display(current_time)
+        current_time = current_time - time_markers[-1][1]
+        display_time = time_display(current_time)
+        print('current_time', display_time)
         memory_monitor()
         # Update time markers (if needed)
-        time_markers.append(current_time - boot_time)  # Relative to boot time
+        #time_markers.append(current_time - boot_time)  # Relative to boot time
         await asyncio.sleep(1)
 
 def process_message(mac,msg):
@@ -204,6 +206,7 @@ def main_menu(pin):
     global button1, button2, button3
     global current_active
     global e
+    global time_markers
     time.sleep(.1)
     length = len(menu)
     for i, x in enumerate(menu):
@@ -247,6 +250,7 @@ def main_menu(pin):
             
         elif current_active == 3:
             print('Start Timer')
+            time_markers.append(['START',time.time()])
             #esp.send(b'x\ff'*6,'Start Timer')
             frint('Start Timer')
         elif current_active == 4:
