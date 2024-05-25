@@ -143,7 +143,7 @@ async def timekeeper():
 
 def process_message(mac,msg):
     print('mac',mac,'msg',msg)
-    frint(mgs)
+    frint(msg)
     pulse(1,1)
 
 def add_peer(mac):
