@@ -58,10 +58,5 @@ import ssd1306
 
 ## Running the Project
 
-Once all prerequisites and required libraries are installed, you can upload the main script to your device and run it using `mpremote`:
-
-```bash
-import uTT
-```
-
-In the REPL, you can manually import and run your project or simply reboot your device to start the main application.
+Once all prerequisites and required libraries are installed, you can upload power on the device:
+Project runs on the boot.py at boot
