@@ -41,6 +41,12 @@ The project depends on the `aioespnow` and `ssd1306` libraries for asynchronous 
    ```
 You should see `aioespnow.mpy` and `ssd1306.mpy` listed.
 
+3. **Transfer the following files to your device**:
+
+- boot.py
+- freesans20.py (for larger font support)
+- writer.py (required for rendering freesans20)
+
 ### Verifying the Installation
 
 After installing the libraries, you can check if they are correctly placed by listing the files in the `/lib` directory on your device by trying to import the libraries:
