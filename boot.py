@@ -9,6 +9,8 @@ import time
 import gc
 from machine import Pin, SoftI2C, PWM
 import ssd1306
+import writer
+import freesans20
 
 mem_free = 0
 mem_alloc = 0
@@ -87,8 +89,11 @@ def time_display(time,oled=oled):
     remaining_seconds = time % 3600
     minutes = remaining_seconds // 60
     time = remaining_seconds % 60
-    oled.fill_rect(0,7*8,128,8,0)
-    oled.text(f"{hours:02}:{minutes:02}:{time:02}",0,7*8)
+    font_writer = writer.Writer(oled, freesans20)
+    font_writer.set_textpos(0,40)
+    font_writer.printstring(f"{minutes:02}:{time:02}")
+    #oled.fill_rect(0,7*8,128,8,0)
+    #oled.text(f"{hours:02}:{minutes:02}:{time:02}",0,7*8)
     oled.show()
     return f"{hours:02}:{minutes:02}:{time:02}"
     
@@ -128,10 +133,11 @@ def memory_monitor():
     #print("Free Memory:", mem_free, "bytes")
     #print("Allocated Memory:", mem_alloc, "bytes")
         
-async def timekeeper():
+async def timekeeper(count):
     global current_time, time_markers
-    boot_time = time.time()
-    time_markers.append(['Boot',boot_time])
+    if count == 0:
+        boot_time = time.time()
+        time_markers.append(['Boot',boot_time])
     while True:
         # Update current time
         current_time = time.time()
@@ -177,8 +183,10 @@ def button_handler(pin):
     global last_interrupt_time
     current_time = time.ticks_ms()
     print(current_time,last_interrupt_time)
-    if time.ticks_diff(current_time, last_interrupt_time) > 900:  # Debounce period of 400 ms
+    if time.ticks_diff(current_time, last_interrupt_time) > 1200:  # Debounce period of 400 ms
         print(f"Button {pin} pressed, handling interrupt")
+        print('time difference ms',time.ticks_diff(current_time, last_interrupt_time))
+        last_interrupt_time = current_time
         #asyncio.create_task(handle_button_press(pin))
         main_menu(pin)
         
@@ -273,7 +281,7 @@ async def main(e, peer, timeout, period):
         print(f'---------------------------------------------count: {count}')
         asyncio.create_task(heartbeat(e, peer, period))
         asyncio.create_task(receiver(e))
-        asyncio.create_task(timekeeper())
+        asyncio.create_task(timekeeper(count))
         await asyncio.sleep(timeout)
         count += 1
 
