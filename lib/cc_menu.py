@@ -46,12 +46,13 @@ class Menu:
             'Provide Feedback': self.provide_feedback,
             'Ping All': self.ping_all,
             'Raise Hand': self.raise_hand,
-            'Set Name': self.set_name  # Add an action for setting the name
+            'Set Name': self.set_device_name
         }
 
         self.current_menu = 'main'
         self.current_selection = 0
         self.device_mode = 'inactive'
+        self.device_name = 'noname'
         self.is_speaker_active = False
         
         self.button1 = Pin(4, Pin.IN, Pin.PULL_UP)
@@ -126,11 +127,17 @@ class Menu:
             self.current_selection = 0
             self.menu_timeout_task = asyncio.create_task(self.menu_timeout())
             
-    async def set_name(self, name):
+    async def set_device_name(self, name):
         print(f"Name set to {name}")
-        self.settings['device_name'] = name
-        self.network.log_event('set_name', self.network.device_mac, name=name)
-        self.display.show_text(f"Name set to {name}", 0)
+        self.device_name = name
+        #self.settings['device_name'] = name
+        #print(f"Sending SET_NAME packet: {name_packet}")
+        self.network.log_event('set_name', self.network.device_mac, d_name=name)
+        await self.network.broadcast(f'SET_NAME:,{self.device_name}'.encode())
+        #self.display.show_text(f"Name set to {name}", 0)
+        self.current_menu = 'main'
+        self.current_selection = 0
+        #print(f"unknown exception: {e}")
 
     async def set_30_minutes(self):
         self.total_session_time = 30 * 60  # 30 minutes
@@ -208,6 +215,10 @@ class Menu:
             self.current_menu = 'main'
         elif item in self.menus:
             self.current_menu = item
+        elif self.current_menu == 'Set Name':
+            print('---------------------:',item)
+            asyncio.create_task(self.set_device_name(item))
+            print('after ------------ set name?')
         else:
             action = self.actions.get(item)
             if action:

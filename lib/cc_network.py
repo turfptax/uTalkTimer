@@ -69,6 +69,15 @@ class Network:
             self.update_status(msg_str[7:])
         elif msg_str.startswith('VOTE:'): #------------------ VOTE
             self.handle_vote(msg_str[5:])
+        elif msg_str.startswith('SET_NAME:'):
+            parts = msg_str.split(',')
+            print('name')
+            if len(parts) == 2:
+                try:
+                    self.mac_to_name[mac] = parts[1]
+                    print('added name to mac_to_name')
+                except ValueError as e:
+                    print(f"Error parsing SET_NAME Packet: {e}")
         elif msg_str.startswith('SESSION_START'): #------------------ SESSION START
             parts = msg_str.split(',')
             print(f"SESSION_START packet received with parts: {parts}")
@@ -139,7 +148,7 @@ class Network:
                 print("ADD_TIME packet format is incorrect")
 
 
-    def log_event(self, event_type, mac, vote_type=None, duration=None):
+    def log_event(self, event_type, mac, vote_type=None, duration=None, d_name=None):
         timestamp = time.time()
         name = self.mac_to_name.get(mac, mac.hex()) if mac else 'System'
         event = [name, mac, timestamp, event_type]
