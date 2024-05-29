@@ -4,7 +4,7 @@ import asyncio
 import json
 
 class Menu:
-    def __init__(self, display, network,buzz, settings, timekeeper, queue):
+    def __init__(self, display, network,buzz, settings, timekeeper, queue, logger):
         self.timekeeper = timekeeper
         self.display = display
         self.network = network
