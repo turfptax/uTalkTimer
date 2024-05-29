@@ -1,22 +1,30 @@
 from machine import Pin
 import time
 import asyncio
+import json
 
 class Menu:
-    def __init__(self, display, network, settings):
+    def __init__(self, display, network,buzz, settings, timekeeper):
+        self.timekeeper = timekeeper
         self.display = display
         self.network = network
         self.settings = settings
+        self.buzz = buzz
+        self.num_participants = settings.get('num_participants', 1)
         
+        # List of names
+        self.names = ["Mark", "BJ", "Wes", "David", "Ardy", "Wayne", "Jackson", "Yahia", "Andre", "Tory",
+                      "Rich", "Sachin"]
         # Define the menu structure
         self.menus = {
-            'main': ['Session Settings', 'During Session', 'Device Settings', 'Feedback and Logs', 'Exit'],
+            'main': ['Session Settings', 'During Session', 'Device Settings', 'Feedback & Logs', 'Set Name','Exit'],
             'Session Settings': ['Set Duration', 'Set Participants', 'Start Session', 'Back'],
             'Set Duration': ['30 minutes', '60 minutes', 'Custom', 'Back'],
             'During Session': ['Current Speaker Timer', 'Request to Speak Next', 'End/Pause Session', 'Back'],
             'Device Settings': ['Buzz Notifications', 'Display Brightness', 'Sound Volume', 'Back'],
             'Buzz Notifications': ['Soft Buzz Time', 'Hard Buzz Time', 'Back'],
-            'Feedback and Logs': ['View Session Logs', 'Provide Feedback', 'Back']
+            'Feedback & Logs': ['View Session Logs', 'Provide Feedback', 'Back'],
+            'Set Name': self.names + ['Back']
         }
 
         # Define the actions dictionary
@@ -37,14 +45,13 @@ class Menu:
             'View Session Logs': self.view_session_logs,
             'Provide Feedback': self.provide_feedback,
             'Ping All': self.ping_all,
-            'Raise Hand': self.raise_hand
+            'Raise Hand': self.raise_hand,
+            'Set Name': self.set_name  # Add an action for setting the name
         }
 
         self.current_menu = 'main'
         self.current_selection = 0
         self.device_mode = 'inactive'
-        self.speaker_timer = 60  # Default to 1 minute
-        self.total_session_time = 0
         self.is_speaker_active = False
         
         self.button1 = Pin(4, Pin.IN, Pin.PULL_UP)
@@ -64,15 +71,26 @@ class Menu:
         if time.ticks_diff(current_time, self.last_interrupt_time) > 400:  # Debounce period of 400 ms
             self.last_interrupt_time = current_time
             self.handle_menu(pin)
+            
+    def calculate_total_time_per_speaker(self):
+        self.total_session_time = self.settings.get('session_duration', 3600)  # Default to 1 hour
+        num_participants = max(self.settings.get('num_participants', 1), 1)
+        print('Num_participants',num_participants)
+        print('total_session_time',self.total_session_time)
+        if num_participants > 0:
+            self.total_time_per_speaker = self.total_session_time // num_participants
+        else:
+            self.total_time_per_speaker = 360
+        print(f"Calculated total time per speaker: {self.total_time_per_speaker} seconds")
 
     def handle_menu(self, pin):
         if self.device_mode == 'main_menu':
             self.handle_main_menu(pin)
-        elif self.device_mode == 'inactive':
+        elif self.timekeeper.device_mode == 'inactive':
             self.handle_main_menu(pin)  # Use the main menu handler
-        elif self.device_mode == 'active_listener':
+        elif self.timekeeper.device_mode == 'active_listener':
             self.handle_active_session_listener(pin)
-        elif self.device_mode == 'active_speaker':
+        elif self.timekeeper.device_mode == 'active_speaker':
             self.handle_active_session_speaker(pin)
 
     def handle_main_menu(self, pin):
@@ -107,6 +125,56 @@ class Menu:
             self.current_menu = 'main'
             self.current_selection = 0
             self.menu_timeout_task = asyncio.create_task(self.menu_timeout())
+            
+    async def set_name(self, name):
+        print(f"Name set to {name}")
+        self.settings['device_name'] = name
+        self.network.log_event('set_name', self.network.device_mac, name=name)
+        self.display.show_text(f"Name set to {name}", 0)
+
+    async def set_30_minutes(self):
+        self.total_session_time = 30 * 60  # 30 minutes
+        self.settings['session_duration'] = self.total_session_time
+        self.total_time_per_speaker = self.total_session_time // max(self.settings.get('num_participants', 1), 1)
+        self.save_settings()
+        await self.network.broadcast(f'SESSION_DURATION:{self.total_session_time}'.encode())
+        self.network.log_event('set_duration', self.network.device_mac, duration=self.total_session_time)
+        print("Session duration set to 30 minutes")
+
+    async def set_60_minutes(self):
+        self.total_session_time = 60 * 60  # 60 minutes
+        self.settings['session_duration'] = self.total_session_time
+        self.total_time_per_speaker = self.total_session_time // max(self.settings.get('num_participants', 1), 1)
+        self.save_settings()
+        await self.network.broadcast(f'SESSION_DURATION:{self.total_session_time}'.encode())
+        self.network.log_event('set_duration', self.network.device_mac, duration=self.total_session_time)
+        print("Session duration set to 60 minutes")
+
+    async def start_session(self):
+        print("Start Session")
+        
+        total_session_time = self.timekeeper.default_session_time
+        self.timekeeper.set_total_session_time(self.timekeeper.default_session_time)
+        
+        total_time_per_speaker = self.timekeeper.calculate_speaker_times(self.num_participants) # Calcualte Better!!!!!
+        self.timekeeper.calculate_speaker_timer()
+        
+        session_start_time = time.time()
+        
+        session_start_packet = f'SESSION_START,{total_session_time},{total_time_per_speaker},{session_start_time}'.encode()
+        
+        print('session_start_packet',session_start_packet)
+        print(f"Sending SESSION_START packet: {session_start_packet}")
+        await self.network.broadcast(session_start_packet)
+        
+        self.timekeeper.set_device_mode('active_speaker')
+        self.is_speaker_active = True
+        self.network.log_event('start_session', self.network.device_mac)
+        print(f"Session started with duration {total_session_time} seconds, each speaker gets {total_time_per_speaker} seconds")
+
+    def save_settings(self):
+        with open('config/settings.json', 'w') as f:
+            json.dump(self.settings, f)
 
     async def menu_timeout(self):
         await asyncio.sleep(5)  # 5 seconds timeout
@@ -143,7 +211,8 @@ class Menu:
         else:
             action = self.actions.get(item)
             if action:
-                action()
+                print(f"Executing action for {item}")
+                asyncio.create_task(action())
 
         self.current_selection = 0
         self.display.update_menu(self.menus[self.current_menu], self.current_selection)
@@ -153,32 +222,6 @@ class Menu:
 
     def set_participants(self):
         pass
-
-    def start_session(self):
-        self.device_mode = 'active_speaker'
-        self.speaker_timer = self.settings.get('default_speaker_time', 60)
-        self.total_session_time = 0
-        self.is_speaker_active = True
-
-    async def set_30_minutes(self):
-        self.total_session_time = 30 * 60  # 30 minutes
-        self.settings['session_duration'] = self.total_session_time
-        self.save_settings()
-        await self.network.broadcast(f'SESSION_DURATION:{self.total_session_time}'.encode())
-        self.network.log_event('set_duration', self.network.device_mac, duration=self.total_session_time)
-        print("Session duration set to 30 minutes")
-
-    async def set_60_minutes(self):
-        self.total_session_time = 60 * 60  # 60 minutes
-        self.settings['session_duration'] = self.total_session_time
-        self.save_settings()
-        await self.network.broadcast(f'SESSION_DURATION:{self.total_session_time}'.encode())
-        self.network.log_event('set_duration', self.network.device_mac, duration=self.total_session_time)
-        print("Session duration set to 60 minutes")
-        
-    def save_settings(self):
-        with open('config/settings.json', 'w') as f:
-            json.dump(self.settings, f)
 
     def set_custom_duration(self):
         pass
