@@ -4,10 +4,16 @@ import time
 
 class Buzz:
     def __init__(self):
+        print('Initializing Buzz class')
         self.motor_pin = Pin(21)
         self.pwm = PWM(self.motor_pin)
-        self.pwm.duty(0)
         self.pwm.freq(1000)
+        
+        print('setting PWM duty to 0')
+        self.pwm.duty(512)
+        time.sleep(.1)
+        
+        print(f"Pin state after initialization: {self.motor_pin.value()}")
         self.pwm.duty(0)
         time.sleep(1)
     
@@ -18,7 +24,7 @@ class Buzz:
 
     def long_buzz(self):
         self.pwm.duty(512)  # 50% duty cycle
-        time.sleep(.7)       # Buzz for .7 seconds
+        time.sleep(1)       # Buzz for 1 second
         self.pwm.duty(0)
 
     def buzz(self, pattern):

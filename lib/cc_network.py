@@ -64,64 +64,46 @@ class Network:
         except OSError as e:
             print(f"Error sending RECV to {mac}: {e}")
         msg_str = msg.decode('utf-8')
+        parts = msg_str.split(',')
         print(f"Decoded message: {msg_str}")
+        for i,part in enumerate(parts):
+            print(f"part_{i}: {part}")
         if msg_str.startswith('STATUS:'): #------------------ STATUS
             self.update_status(msg_str[7:])
-        elif msg_str.startswith('VOTE:'): #------------------ VOTE
-            self.handle_vote(msg_str[5:])
         elif msg_str.startswith('SET_NAME:'):
-            parts = msg_str.split(',')
             if len(parts) == 2:
-                try:
-                    self.mac_to_name[mac] = parts[1]
-                    print('added name to mac_to_name')
-                except ValueError as e:
-                    print(f"Error parsing SET_NAME Packet: {e}")
+                self.mac_to_name[mac] = parts[1]
+                print('added name to mac_to_name')
         elif msg_str.startswith('SESSION_START'): #------------------ SESSION START
-            parts = msg_str.split(',')
             print(f"SESSION_START packet received with parts: {parts}")
             if len(parts) == 4:
-                try:
-                    self.menu.timekeeper.total_session_time = int(parts[1])
-                    self.menu.timekeeper.total_time_per_speaker = int(parts[2])
-                    
-                    self.menu.timekeeper.device_speaker_time_left = int(parts[2])
-
-                    self.menu.timekeeper.calculate_speaker_timer()
-                    self.menu.timekeeper.set_device_mode('active_listener')
-                
-                    self.menu.is_speaker_active = False
-                    self.log_event('start_session', mac)
-                    print("Status updated to: active_listener")
-                    print("Local Values updated for active_listener mode from SESSION_START Packet")
-                except ValueError as e:
-                    print(f"Error parsing session start packet: {e}")
-            else:
-                print("SESSION_START packet format is incorrect")
+                self.menu.timekeeper.total_session_time = int(parts[1])
+                self.menu.timekeeper.total_time_per_speaker = int(parts[2])
+                self.menu.timekeeper.device_speaker_time_left = int(parts[2])
+                self.menu.timekeeper.calculate_speaker_timer()
+                self.menu.timekeeper.set_device_mode('active_listener')
+                self.menu.is_speaker_active = False
+                self.menu.buzz.short_buzz()
+                self.log_event('start_session', mac)
         elif msg_str.startswith('RAISE_HAND'): #------------------ RAISE HAND
             self.log_event('raise_hand', mac)
         elif msg_str.startswith('END_TIME'): #------------------ END TIME
-            parts = msg_str.split(',')
             print(f"END_TIME packet received with parts: {parts}")
             if len(parts) == 3:
-                try:
-                    total_time_left = int(parts[1])
-                    total_session_time_left = int(parts[2])
-                except ValueError as e:
-                    print(f"Error parsing END_TIME packet: {e}")
+                total_time_left = int(parts[1])
+                total_session_time_left = int(parts[2])
             else:
                 print("END_TIME packet format is incorrect")
         elif msg_str.startswith('NEXT_SPEAKER'):
             print(f"NEXT_SPEAKER packet received: {msg_str}")
-            parts = msg_str.split(',')
             next_speaker_mac_str = parts[1]
             next_speaker_mac = bytes.fromhex(next_speaker_mac_str)
             self.menu.timekeeper.total_session_time = int(parts[2])
-            print(f"Next speaker MAC: {next_speaker_mac}",f"My MAC: {self.device_mac}")
             if next_speaker_mac == self.device_mac:  # Corrected
                 self.menu.timekeeper.calculate_speaker_timer()
                 self.menu.timekeeper.set_device_mode('active_speaker')
                 self.menu.is_speaker_active = True
+                self.menu.buzz.short_buzz() # Buzz to notify you are next speaker
                 self.log_event('start_speaker', self.device_mac)  # Corrected
                 print("This device is the next speaker")
                 # Broadcast status update
@@ -129,19 +111,16 @@ class Network:
                 await self.broadcast(status_packet)  # Corrected the function call
             else:
                 print("This device is not the next speaker")
-        elif msg_str.startswith('ADD_TIME'):
+        elif msg_str.startswith('ADD_TIME'): #-----------------------ADD TIME
             parts = msg_str.split(',')
             print(f"ADD_TIME packet received with parts: {parts}")
             if len(parts) == 2:
-                try:
-                    added_time = int(parts[1])
-                    #self.menu.timekeeper.add_time(added_time)
-                    # Have to calculate and check if this person is recipient
-                    self.log_event('add_time', mac)
-                    print(f"Added time: {added_time}")
-                    print("Display updated for added time")
-                except ValueError as e:
-                    print(f"Error parsing ADD_TIME packet: {e}")
+                added_time = int(parts[1])
+                #self.menu.timekeeper.add_time(added_time)
+                # Have to calculate and check if this person is recipient
+                self.log_event('add_time', mac)
+                print(f"Added time: {added_time}")
+                print("Display updated for added time")
             else:
                 print("ADD_TIME packet format is incorrect")
 
@@ -189,7 +168,7 @@ class Network:
         if next_speaker:
             mac = next_speaker[1]
             mac_hex = mac.hex()  # Convert MAC address to hex string
-            print(f"Next speaker: {next_speaker[0]}")
+            print(f"Next speaker: {mac_hex}")
             asyncio.create_task(self.broadcast(f'NEXT_SPEAKER:,{mac_hex},{self.menu.timekeeper.total_session_time}'.encode()))
 
     def get_next_speaker(self):

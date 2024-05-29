@@ -134,10 +134,8 @@ class Menu:
         print(f"Sending SET_NAME packet: SET_NAME:,{self.device_name}")
         self.network.log_event('set_name', self.network.device_mac, d_name=name)
         await self.network.broadcast(f'SET_NAME:,{self.device_name}'.encode())
-        #self.display.show_text(f"Name set to {name}", 0)
         self.current_menu = 'main'
         self.current_selection = 0
-        #print(f"unknown exception: {e}")
 
     async def set_30_minutes(self):
         self.total_session_time = 30 * 60  # 30 minutes
@@ -199,6 +197,7 @@ class Menu:
     async def raise_hand(self):
         print("Raise Hand")
         await self.network.broadcast(b'RAISE_HAND')
+        self.queue.add_to_queue(self.device_name,self.network.device_mac)
         self.network.log_event('raise_hand', self.network.device_mac)
         pass
 

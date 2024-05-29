@@ -16,6 +16,7 @@ class Timekeeper:
         self.default_session_time = 3600
         
         self.device_mode = 'inactive'
+        self.times_spoken = 0
 
     def initialize_timer(self, session_duration, time_per_speaker):
         self.start_time = time.time()
@@ -57,6 +58,12 @@ class Timekeeper:
     def add_time(self,amount):
         self.device_timer += amount
         self.self.device_speaker_time_left += amount
+    
+    def add_times_spoken(self):
+        self.times_spoken += 1
+    
+    def get_times_spoken(self):
+        return self.times_spoken
         
     def set_total_session_time(self,amount):
         self.total_session_time=amount
