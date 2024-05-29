@@ -6,6 +6,7 @@ class Buzz:
     def __init__(self):
         self.motor_pin = Pin(21)
         self.pwm = PWM(self.motor_pin)
+        self.pwm.duty(0)
         self.pwm.freq(1000)
         self.pwm.duty(0)
         time.sleep(1)
@@ -17,7 +18,7 @@ class Buzz:
 
     def long_buzz(self):
         self.pwm.duty(512)  # 50% duty cycle
-        time.sleep(1)       # Buzz for 1 second
+        time.sleep(.7)       # Buzz for .7 seconds
         self.pwm.duty(0)
 
     def buzz(self, pattern):

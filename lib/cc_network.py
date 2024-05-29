@@ -71,7 +71,6 @@ class Network:
             self.handle_vote(msg_str[5:])
         elif msg_str.startswith('SET_NAME:'):
             parts = msg_str.split(',')
-            print('name')
             if len(parts) == 2:
                 try:
                     self.mac_to_name[mac] = parts[1]
@@ -114,21 +113,20 @@ class Network:
                 print("END_TIME packet format is incorrect")
         elif msg_str.startswith('NEXT_SPEAKER'):
             print(f"NEXT_SPEAKER packet received: {msg_str}")
-            next_speaker_mac_str = msg_str[13:]
+            parts = msg_str.split(',')
+            next_speaker_mac_str = parts[1]
             next_speaker_mac = bytes.fromhex(next_speaker_mac_str)
-            print(f"Next speaker MAC: {next_speaker_mac}")
-            print(f"My MAC: {self.device_mac}")  # Corrected
-
+            self.menu.timekeeper.total_session_time = int(parts[2])
+            print(f"Next speaker MAC: {next_speaker_mac}",f"My MAC: {self.device_mac}")
             if next_speaker_mac == self.device_mac:  # Corrected
-                self.menu.device_mode = 'active_speaker'
-                self.menu.is_speaker_active = True
                 self.menu.timekeeper.calculate_speaker_timer()
+                self.menu.timekeeper.set_device_mode('active_speaker')
+                self.menu.is_speaker_active = True
                 self.log_event('start_speaker', self.device_mac)  # Corrected
                 print("This device is the next speaker")
                 # Broadcast status update
                 status_packet = f'STATUS:active_speaker'.encode()
                 await self.broadcast(status_packet)  # Corrected the function call
-                print("Display updated for next_speaker")
             else:
                 print("This device is not the next speaker")
         elif msg_str.startswith('ADD_TIME'):
@@ -146,7 +144,6 @@ class Network:
                     print(f"Error parsing ADD_TIME packet: {e}")
             else:
                 print("ADD_TIME packet format is incorrect")
-
 
     def log_event(self, event_type, mac, vote_type=None, duration=None, d_name=None):
         timestamp = time.time()
@@ -193,7 +190,7 @@ class Network:
             mac = next_speaker[1]
             mac_hex = mac.hex()  # Convert MAC address to hex string
             print(f"Next speaker: {next_speaker[0]}")
-            asyncio.create_task(self.broadcast(f'NEXT_SPEAKER:{mac_hex}'.encode()))
+            asyncio.create_task(self.broadcast(f'NEXT_SPEAKER:,{mac_hex},{self.menu.timekeeper.total_session_time}'.encode()))
 
     def get_next_speaker(self):
         # Logic to determine the next speaker from the ledger

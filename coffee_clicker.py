@@ -46,9 +46,11 @@ async def main_loop(display, buzz, network, menu, timekeeper):
                     invert=(timekeeper.device_timer < 0),
                     device_speaker_time_left=timekeeper.device_speaker_time_left  # Ensure device_speaker_time_left is integer
                 )
-
-                timekeeper.update_time() # Reset last update time after display update
+                #timekeeper.update_time() # Reset last update time after display update
         else:
+            # Session Timer Countdown:
+            timer = timekeeper.get_device_timer()
+            timekeeper.reduce_session_time()
             # Update display for inactive modes to ensure menu is visible
             total_session_time = timekeeper.get_total_session_time()
             total_time_per_speaker = timekeeper.get_total_time_per_speaker()
@@ -66,7 +68,7 @@ async def main_loop(display, buzz, network, menu, timekeeper):
                 current_selection=menu.current_selection,
                 device_speaker_time_left=device_speaker_time_left
             )
-        
+        timekeeper.update_time()
         await asyncio.sleep(1)
 
 async def main():

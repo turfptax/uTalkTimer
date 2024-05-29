@@ -206,7 +206,8 @@ class Menu:
         print("End Time")
         await self.network.broadcast(b'END_TIME')
         self.network.log_event('end_time', self.network.device_mac)
-        self.device_mode = 'active_listener'
+        self.timekeeper.calculate_speaker_timer()
+        self.timekeeper.set_device_mode('active_listener')
         self.network.respond_next_speaker()
 
     def select_menu_item(self, menu, selection):

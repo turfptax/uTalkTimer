@@ -34,6 +34,10 @@ class Timekeeper:
         self.device_speaker_time_left -= elapsed_time
         self.device_timer -= elapsed_time
     
+    def reduce_session_time(self):
+        elapsed_time = time.time()-self.last_update
+        self.total_session_time -= elapsed_time
+    
     def calculate_speaker_timer(self):
         if self.device_speaker_time_left > 0:
             if self.device_speaker_time_left < 60:
