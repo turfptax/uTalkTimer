@@ -4,17 +4,18 @@ import asyncio
 import json
 
 class Menu:
-    def __init__(self, display, network,buzz, settings, timekeeper):
+    def __init__(self, display, network,buzz, settings, timekeeper, queue):
         self.timekeeper = timekeeper
         self.display = display
         self.network = network
         self.settings = settings
         self.buzz = buzz
+        self.queue = queue
         self.num_participants = settings.get('num_participants', 1)
         
         # List of names
-        self.names = ["Mark", "BJ", "Wes", "David", "Ardy", "Wayne", "Jackson", "Yahia", "Andre", "Tory",
-                      "Rich", "Sachin"]
+        self.names = ["Mark", "BJ", "Wes", "David", "Ardy", "Wayne", "Jacks", "Yahia", "Andre", "Tory",
+                      "Rich", "Sachi"]
         # Define the menu structure
         self.menus = {
             'main': ['Session Settings', 'During Session', 'Device Settings', 'Feedback & Logs', 'Set Name','Exit'],
@@ -128,10 +129,9 @@ class Menu:
             self.menu_timeout_task = asyncio.create_task(self.menu_timeout())
             
     async def set_device_name(self, name):
-        print(f"Name set to {name}")
         self.device_name = name
         #self.settings['device_name'] = name
-        #print(f"Sending SET_NAME packet: {name_packet}")
+        print(f"Sending SET_NAME packet: SET_NAME:,{self.device_name}")
         self.network.log_event('set_name', self.network.device_mac, d_name=name)
         await self.network.broadcast(f'SET_NAME:,{self.device_name}'.encode())
         #self.display.show_text(f"Name set to {name}", 0)

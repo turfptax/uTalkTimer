@@ -80,14 +80,8 @@ class Display:
             self.oled.text(f"{prefix}{item}", column * 64, 16 + row * 8)
         self.oled.show()
 
-    def update(self, mode, current_time, num_peers, speaker_time=None, total_time=None, invert=False, menu_items=None, current_selection=0, queue_status=None, device_speaker_time_left=0):
+    def update(self, mode, current_time, num_peers, speaker_time=0, total_time=0, invert=False, menu_items=None, current_selection=0, queue_status=None, device_speaker_time_left=0):
         current_ticks = time.ticks_ms()
-        if current_time is None:
-            current_time = 0  # Default to 0 if current_time is None
-        if speaker_time is None:
-            speaker_time = 0  # Default to 0 if speaker_time is None
-        if total_time is None:
-            total_time = 0  # Default to 0 if total_time is None
         if mode == 'inactive':
             if time.ticks_diff(current_ticks, self.last_time_update) >= 1000:  # Update every second
                 self.update_inactive_display(menu_items, current_selection, current_time, num_peers)

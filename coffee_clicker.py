@@ -1,4 +1,4 @@
-from lib import cc_display, cc_buzz, cc_network, cc_menu, cc_timekeeper
+from lib import cc_display, cc_buzz, cc_network, cc_menu, cc_timekeeper, cc_queue
 import json
 import uasyncio as asyncio
 import time
@@ -78,9 +78,10 @@ async def main():
     
     # Setup the timekeeper reference
     timekeeper = cc_timekeeper.Timekeeper()
+    queue = cc_queue.Queue()
     
     # Initialize Menu first without the network reference
-    menu = cc_menu.Menu(display, None, buzz, settings, timekeeper)
+    menu = cc_menu.Menu(display, None, buzz, settings, timekeeper, queue)
     
     # Initialize Network and pass the menu reference
     network = cc_network.Network(menu)
