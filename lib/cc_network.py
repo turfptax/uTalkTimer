@@ -96,6 +96,7 @@ class Network:
                 self.menu.queue.update_roster(mac,'time_left',parts[2])
                 self.menu.queue.update_roster(mac,'times_spoke',parts[3])
                 self.menu.timekeeper.set_total_session_time(int(parts[2]))
+                self.menu.queue.get_next_speaker()
             else:
                 print("END_TIME packet format is incorrect")
         elif msg_str.startswith('NEXT_SPEAKER'):
@@ -103,6 +104,8 @@ class Network:
             next_speaker_mac_str = parts[1]
             next_speaker_mac = bytes.fromhex(next_speaker_mac_str)
             self.menu.timekeeper.total_session_time = int(parts[2])
+            print(f"Next Speaker Proper Mac:{next_speaker_mac}")
+            print(f"This Device Proper Mac: {self.device_mac}")
             if next_speaker_mac == self.device_mac:  # Corrected
                 self.menu.timekeeper.calculate_speaker_timer()
                 self.menu.timekeeper.set_device_mode('active_speaker')
@@ -121,7 +124,7 @@ class Network:
             if len(parts) == 3:
                 self.menu.timekeeper.update_allotted_time_left(int(parts[1]))
                 if mac != self.device_mac:
-                    self.queue.update_roster(mac,'time_left',int(parts[2]))
+                    self.menu.queue.update_roster(mac,'time_left',int(parts[2]))
                 else:
                     print('----------------You Received A Gift!-------------------')
                     self.timekeeper.update_allotted_time_left(int(parts[1]))
@@ -170,10 +173,11 @@ class Network:
         # Determine the next speaker based on the session queue
         next_speaker = self.menu.queue.get_next_speaker()
         if next_speaker:
-            mac = next_speaker[0]
+            mac = next_speaker
             mac_hex = mac.hex()  # Convert MAC address to hex string
-            print(f"Next speaker: {mac_hex}")
+            print(f"Next speaker is: {mac_hex}")
             asyncio.create_task(self.broadcast(f'NEXT_SPEAKER:,{mac_hex},{self.menu.timekeeper.total_session_time}'.encode()))
+            print('sent next speaker notification')
     
     def get_device_mode(self):
         return self.menu.device_mode

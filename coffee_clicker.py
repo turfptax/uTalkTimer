@@ -1,7 +1,8 @@
-from lib import cc_display, cc_buzz, cc_network, cc_menu, cc_timekeeper, cc_queue, cc_logger
+from lib import cc_display, cc_network, cc_menu,cc_buzz, cc_timekeeper, cc_queue, cc_logger
 import json
 import uasyncio as asyncio
 import time
+
 
 def load_settings():
     try:

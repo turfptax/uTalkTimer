@@ -11,9 +11,13 @@ class Queue:
         print(f"Added to queue: [{mac},{times_spoken}]")
 
     def get_next_speaker(self):
+        print('Calculating Next Speaker cc_queue.py')
+        print('self.queue',self.queue)
         if self.queue:
             self.queue.sort(key=lambda x: (-x[1],x[2]))# Sort negative middle column (descending) then last column (ascending)
-            return self.queue.pop(-1)
+            next_speaker = self.queue.pop(-1)
+            print('next_speaker[0] is:',next_speaker[0])
+            return next_speaker[0]
         else:
             print('nothing in the q')
             return False
