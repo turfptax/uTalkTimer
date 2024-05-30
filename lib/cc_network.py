@@ -75,14 +75,17 @@ class Network:
         elif msg_str.startswith('SESSION_START'): #------------------ SESSION START
             print(f"SESSION_START packet received with parts: {parts}")
             if len(parts) == 4:
-                self.menu.timekeeper.total_session_time = int(parts[1])
-                self.menu.timekeeper.allotted_time = int(parts[2])
-                self.menu.timekeeper.allotted_time_left = int(parts[2])
-                self.menu.timekeeper.calculate_speaker_timer()
-                self.menu.timekeeper.set_device_mode('active_listener')
-                self.menu.is_speaker_active = False
-                self.menu.buzz.short_buzz()
-                self.log_event('start_session', mac)
+                try:
+                    self.menu.timekeeper.total_session_time = int(parts[1])
+                    self.menu.timekeeper.allotted_time = int(parts[2])
+                    self.menu.timekeeper.allotted_time_left = int(parts[2])
+                    self.menu.timekeeper.calculate_speaker_timer()
+                    self.menu.timekeeper.set_device_mode('active_listener')
+                    self.menu.is_speaker_active = False
+                    self.menu.buzz.short_buzz()
+                    self.menu.logger.log_event('start_session', mac)
+                except Exception as e:
+                    self.menu.logger.log_event('Error',e)
         elif msg_str.startswith('RAISE_HAND'): #------------------ RAISE HAND
             if len(parts) == 2:
                 self.menu.queue.add_to_queue(mac,int(parts[1]))
