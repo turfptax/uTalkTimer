@@ -25,7 +25,7 @@ class Display:
         self.oled.show()
 
     def update_inactive_display(self, menu_items, current_selection, current_time, num_peers):
-        self.oled.fill(0)
+        #self.oled.fill(0)
         self.update_time(current_time)
         self.update_hud(num_peers)
         self.update_menu(menu_items, current_selection)
@@ -50,11 +50,11 @@ class Display:
         self.oled.show()
 
 
-    def update_session_display(self, speaker_time, total_time, queue_status, mode, invert=False, device_speaker_time_left=0):
+    def update_session_display(self, speaker_time, total_time, queue_status, mode, invert=False, allotted_time_left=0):
         self.oled.fill(0)
         self.update_time(speaker_time, invert)
         self.oled.text(f"Total: {total_time // 60:02}:{total_time % 60:02}", 0, 24)
-        self.oled.text(f"Left: {device_speaker_time_left // 60:02}:{device_speaker_time_left % 60:02}", 0, 32)
+        self.oled.text(f"Left: {allotted_time_left // 60:02}:{allotted_time_left % 60:02}", 0, 32)
         if mode == 'active_speaker':
             self.oled.text("VOTE  END   MENU", 0, 48)
             self.oled.text("ADD   TIME        ", 0, 56)
@@ -80,12 +80,12 @@ class Display:
             self.oled.text(f"{prefix}{item}", column * 64, 16 + row * 8)
         self.oled.show()
 
-    def update(self, mode, current_time, num_peers, speaker_time=0, total_time=0, invert=False, menu_items=None, current_selection=0, queue_status=None, device_speaker_time_left=0):
+    def update(self, mode, current_time, num_peers, speaker_time=0, total_time=0, invert=False, menu_items=None, current_selection=0, queue_status=None, allotted_time_left=0):
         current_ticks = time.ticks_ms()
         if mode == 'inactive':
             if time.ticks_diff(current_ticks, self.last_time_update) >= 1000:  # Update every second
                 self.update_inactive_display(menu_items, current_selection, current_time, num_peers)
                 self.last_time_update = current_ticks
         elif mode in ['active_speaker', 'active_listener']:
-            #print(speaker_time, total_time, queue_status, mode, invert, device_speaker_time_left)
-            self.update_session_display(speaker_time, total_time, queue_status, mode, invert, device_speaker_time_left)
+            #print(speaker_time, total_time, queue_status, mode, invert, allotted_time_left)
+            self.update_session_display(speaker_time, total_time, queue_status, mode, invert, allotted_time_left)

@@ -44,7 +44,7 @@ async def main_loop(display, buzz, network, menu, timekeeper):
                     speaker_time=timekeeper.device_timer,
                     total_time=timekeeper.total_session_time,  # Ensure total_time is integer
                     invert=(timekeeper.device_timer < 0),
-                    device_speaker_time_left=timekeeper.device_speaker_time_left  # Ensure device_speaker_time_left is integer
+                    allotted_time_left=timekeeper.allotted_time_left  # Ensure allotted_time_left is integer
                 )
                 #timekeeper.update_time() # Reset last update time after display update
         else:
@@ -53,8 +53,8 @@ async def main_loop(display, buzz, network, menu, timekeeper):
             timekeeper.reduce_session_time()
             # Update display for inactive modes to ensure menu is visible
             total_session_time = timekeeper.get_total_session_time()
-            total_time_per_speaker = timekeeper.get_total_time_per_speaker()
-            device_speaker_time_left = timekeeper.get_device_speaker_time_left()
+            allotted_time = timekeeper.get_allotted_time()
+            allotted_time_left = timekeeper.get_allotted_time_left()
             
 
             # Update display for inactive modes to ensure menu is visible
@@ -66,7 +66,7 @@ async def main_loop(display, buzz, network, menu, timekeeper):
                 total_time=total_session_time,
                 menu_items=menu.menus[menu.current_menu],
                 current_selection=menu.current_selection,
-                device_speaker_time_left=device_speaker_time_left
+                allotted_time_left=allotted_time_left
             )
         timekeeper.update_time()
         await asyncio.sleep(1)
@@ -84,7 +84,7 @@ async def main():
     logger = cc_logger.Logger()
     
     # Initialize Menu first without the network reference
-    menu = cc_menu.Menu(display, None, buzz, settings, timekeeper, queue,logger)
+    menu = cc_menu.Menu(display, None, buzz, settings, timekeeper, queue, logger)
     
     # Initialize Network and pass the menu reference
     network = cc_network.Network(menu)

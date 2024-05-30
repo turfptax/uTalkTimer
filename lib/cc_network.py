@@ -68,30 +68,34 @@ class Network:
         print(f"Decoded message: {msg_str}")
         for i,part in enumerate(parts):
             print(f"part_{i}: {part}")
-        if msg_str.startswith('STATUS:'): #------------------ STATUS
-            self.update_status(msg_str[7:])
-        elif msg_str.startswith('SET_NAME:'):
-            if len(parts) == 2:
-                self.mac_to_name[mac] = parts[1]
-                print('added name to mac_to_name')
+        if msg_str.startswith('STATUS:'): #--------------------------- STATUS
+            pass
+        elif msg_str.startswith('SET_NAME:'): #-----------------------SET NAME
+            self.menu.queue.update_roster(mac,'nice_name',parts[1])
         elif msg_str.startswith('SESSION_START'): #------------------ SESSION START
             print(f"SESSION_START packet received with parts: {parts}")
             if len(parts) == 4:
                 self.menu.timekeeper.total_session_time = int(parts[1])
-                self.menu.timekeeper.total_time_per_speaker = int(parts[2])
-                self.menu.timekeeper.device_speaker_time_left = int(parts[2])
+                self.menu.timekeeper.allotted_time = int(parts[2])
+                self.menu.timekeeper.allotted_time_left = int(parts[2])
                 self.menu.timekeeper.calculate_speaker_timer()
                 self.menu.timekeeper.set_device_mode('active_listener')
                 self.menu.is_speaker_active = False
                 self.menu.buzz.short_buzz()
                 self.log_event('start_session', mac)
         elif msg_str.startswith('RAISE_HAND'): #------------------ RAISE HAND
-            self.log_event('raise_hand', mac)
+            if len(parts) == 2:
+                self.menu.queue.add_to_queue(mac,int(parts[1]))
+                self.menu.queue.update_roster(mac,'times_spoken',int(parts[1]))
+                self.menu.logger.log_event('RAISE_HAND', mac)
+            else:
+                print("RAISE_HAND packet format is incorrect")
         elif msg_str.startswith('END_TIME'): #------------------ END TIME
-            print(f"END_TIME packet received with parts: {parts}")
-            if len(parts) == 3:
-                total_time_left = int(parts[1])
-                total_session_time_left = int(parts[2])
+            print(f"END_TIME RECV session,allotted_left,times_spoken: {parts}")
+            if len(parts) == 4:
+                self.menu.queue.update_roster(mac,'time_left',parts[2])
+                self.menu.queue.update_roster(mac,'times_spoke',parts[3])
+                self.menu.timekeeper.set_total_session_time(int(parts[2]))
             else:
                 print("END_TIME packet format is incorrect")
         elif msg_str.startswith('NEXT_SPEAKER'):
@@ -104,23 +108,23 @@ class Network:
                 self.menu.timekeeper.set_device_mode('active_speaker')
                 self.menu.is_speaker_active = True
                 self.menu.buzz.short_buzz() # Buzz to notify you are next speaker
-                self.log_event('start_speaker', self.device_mac)  # Corrected
+                self.menu.logger.log_event('start_speaker', self.device_mac)  # Corrected
                 print("This device is the next speaker")
                 # Broadcast status update
-                status_packet = f'STATUS:active_speaker'.encode()
+                status_packet = f'STATUS:,active_speaker'.encode()
                 await self.broadcast(status_packet)  # Corrected the function call
             else:
                 print("This device is not the next speaker")
         elif msg_str.startswith('ADD_TIME'): #-----------------------ADD TIME
-            parts = msg_str.split(',')
             print(f"ADD_TIME packet received with parts: {parts}")
-            if len(parts) == 2:
-                added_time = int(parts[1])
-                #self.menu.timekeeper.add_time(added_time)
-                # Have to calculate and check if this person is recipient
-                self.log_event('add_time', mac)
-                print(f"Added time: {added_time}")
-                print("Display updated for added time")
+            #add_time_packet = f"ADD_TIME:,{gift},{self.timekeeper.allotted_time_left}"
+            if len(parts) == 3:
+                self.menu.timekeeper.update_allotted_time_left(int(parts[1]))
+                if mac != self.device_mac:
+                    self.queue.update_roster(mac,'time_left',int(parts[2]))
+                else:
+                    print('----------------You Received A Gift!-------------------')
+                    self.timekeeper.update_allotted_time_left(int(parts[1]))
             else:
                 print("ADD_TIME packet format is incorrect")
 
@@ -162,21 +166,14 @@ class Network:
         # Broadcast a request for the next speaker
         asyncio.create_task(self.broadcast(b'REQUEST_NEXT_SPEAKER'))
 
-    def respond_next_speaker(self):
-        # Determine the next speaker based on the session ledger
-        next_speaker = self.get_next_speaker()
+    def notify_next_speaker(self):
+        # Determine the next speaker based on the session queue
+        next_speaker = self.menu.queue.get_next_speaker()
         if next_speaker:
-            mac = next_speaker[1]
+            mac = next_speaker[0]
             mac_hex = mac.hex()  # Convert MAC address to hex string
             print(f"Next speaker: {mac_hex}")
             asyncio.create_task(self.broadcast(f'NEXT_SPEAKER:,{mac_hex},{self.menu.timekeeper.total_session_time}'.encode()))
-
-    def get_next_speaker(self):
-        # Logic to determine the next speaker from the ledger
-        for event in self.session_ledger:
-            if event[3] == 'raise_hand':
-                return event
-        return None
     
     def get_device_mode(self):
         return self.menu.device_mode

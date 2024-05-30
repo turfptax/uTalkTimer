@@ -1,4 +1,5 @@
 import os
+import time
 
 class Logger:
     def __init__(self, log_dir="logs"):
@@ -26,9 +27,10 @@ class Logger:
 
         return "{}/log_{}.csv".format(self.log_dir, new_log_number)
 
-    def log_event(self, timestamp, event_type, details):
+    def log_event(self,event_type, details):
+        print(f"Logging Event Type: {event_type} Details: {details}")
         with open(self.filename, "a") as file:
-            file.write("{},{},{}\n".format(timestamp, event_type, details))
+            file.write("{},{},{}\n".format(time.time(), event_type, details))
 
 # Example usage:
 #logger = Logger()

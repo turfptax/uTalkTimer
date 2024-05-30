@@ -11,11 +11,12 @@ class Menu:
         self.settings = settings
         self.buzz = buzz
         self.queue = queue
+        self.logger = logger
         self.num_participants = settings.get('num_participants', 1)
         
         # List of names
-        self.names = ["Mark", "BJ", "Wes", "David", "Ardy", "Wayne", "Jacks", "Yahia", "Andre", "Tory",
-                      "Rich", "Sachi"]
+        self.names = ['Andre', 'Andre', 'Ardy', 'BJ', 'David',
+                      'Jacks', 'Mark', 'Rich', 'Sachi', 'Tory', 'Wayne', 'Wes', 'Yahia']
         # Define the menu structure
         self.menus = {
             'main': ['Session Settings', 'During Session', 'Device Settings', 'Feedback & Logs', 'Set Name','Exit'],
@@ -74,16 +75,16 @@ class Menu:
             self.last_interrupt_time = current_time
             self.handle_menu(pin)
             
-    def calculate_total_time_per_speaker(self):
+    def calculate_allotted_time(self):
         self.total_session_time = self.settings.get('session_duration', 3600)  # Default to 1 hour
         num_participants = max(self.settings.get('num_participants', 1), 1)
         print('Num_participants',num_participants)
         print('total_session_time',self.total_session_time)
         if num_participants > 0:
-            self.total_time_per_speaker = self.total_session_time // num_participants
+            self.allotted_time = self.total_session_time // num_participants
         else:
-            self.total_time_per_speaker = 360
-        print(f"Calculated total time per speaker: {self.total_time_per_speaker} seconds")
+            self.allotted_time = 360
+        print(f"Calculated total time per speaker: {self.allotted_time} seconds")
 
     def handle_menu(self, pin):
         if self.device_mode == 'main_menu':
@@ -132,50 +133,42 @@ class Menu:
         self.device_name = name
         #self.settings['device_name'] = name
         print(f"Sending SET_NAME packet: SET_NAME:,{self.device_name}")
-        self.network.log_event('set_name', self.network.device_mac, d_name=name)
+        self.logger.log_event('set_name', f"This Device:{self.network.device_mac},{name}")
         await self.network.broadcast(f'SET_NAME:,{self.device_name}'.encode())
+        self.queue.update_roster(self.network.device_mac,'nice_name',name)
         self.current_menu = 'main'
         self.current_selection = 0
 
     async def set_30_minutes(self):
-        self.total_session_time = 30 * 60  # 30 minutes
-        self.settings['session_duration'] = self.total_session_time
-        self.total_time_per_speaker = self.total_session_time // max(self.settings.get('num_participants', 1), 1)
-        self.save_settings()
-        await self.network.broadcast(f'SESSION_DURATION:{self.total_session_time}'.encode())
-        self.network.log_event('set_duration', self.network.device_mac, duration=self.total_session_time)
-        print("Session duration set to 30 minutes")
+        self.timekeeper.set_base_session_time(30 * 60)  # 30 minutes
+        session_duration_packet = f'SESSION_DURATION:,{self.timekeeper.base_session_time}'
+        await self.network.broadcast(session_duration_packet.encode())
+        self.logger.log_event('SET_SESSION_DURATION', session_duration_packet)
 
     async def set_60_minutes(self):
-        self.total_session_time = 60 * 60  # 60 minutes
-        self.settings['session_duration'] = self.total_session_time
-        self.total_time_per_speaker = self.total_session_time // max(self.settings.get('num_participants', 1), 1)
-        self.save_settings()
-        await self.network.broadcast(f'SESSION_DURATION:{self.total_session_time}'.encode())
-        self.network.log_event('set_duration', self.network.device_mac, duration=self.total_session_time)
-        print("Session duration set to 60 minutes")
+        self.timekeeper.set_base_session_time(60 * 60)
+        session_duration_packet = f'SESSION_DURATION:,{self.timekeeper.base_session_time}'
+        await self.network.broadcast(session_duration_packet.encode())
+        self.logger.log_event('SET_SESSION_DURATION', session_duration_packet)
+
 
     async def start_session(self):
-        print("Start Session")
-        
-        total_session_time = self.timekeeper.default_session_time
-        self.timekeeper.set_total_session_time(self.timekeeper.default_session_time)
-        
-        total_time_per_speaker = self.timekeeper.calculate_speaker_times(self.num_participants) # Calcualte Better!!!!!
-        self.timekeeper.calculate_speaker_timer()
+        total_session_time = self.timekeeper.base_session_time
+        self.timekeeper.set_total_session_time(self.timekeeper.base_session_time)
+        allotted_time = self.timekeeper.calculate_speaker_times(self.num_participants) # Calcualte Better!!!!!
+        self.timekeeper.calculate_speaker_timer() # updates timekeeper
         
         session_start_time = time.time()
-        
-        session_start_packet = f'SESSION_START,{total_session_time},{total_time_per_speaker},{session_start_time}'.encode()
-        
+        session_start_packet = f'SESSION_START,{total_session_time},{allotted_time},{session_start_time}'.encode()
         print('session_start_packet',session_start_packet)
         print(f"Sending SESSION_START packet: {session_start_packet}")
         await self.network.broadcast(session_start_packet)
+        self.logger.log_event( "SESSION_START", f"This Device:,{session_start_packet}")
         
-        self.timekeeper.set_device_mode('active_speaker')
+        self.timekeeper.set_device_mode('active_speaker') # Change Device Mode and Display Update
         self.is_speaker_active = True
-        self.network.log_event('start_session', self.network.device_mac)
-        print(f"Session started with duration {total_session_time} seconds, each speaker gets {total_time_per_speaker} seconds")
+        print(f"-------Session started with duration {total_session_time} seconds-------")
+        print(f"------------each speaker gets {allotted_time} seconds-------------------")
 
     def save_settings(self):
         with open('config/settings.json', 'w') as f:
@@ -189,25 +182,31 @@ class Menu:
         self.display.update_menu(self.menus[self.current_menu], self.current_selection)
 
     async def vote_to_add_time(self):
-        print("Add Time")
-        await self.network.broadcast(b'ADD_TIME')
-        self.network.log_event('add_time', self.network.device_mac)
-        pass
+        gift = self.timekeeper.give_time()
+        if gift:
+            add_time_packet = f"ADD_TIME:,{gift},{self.timekeeper.allotted_time_left}"
+            await self.network.broadcast(add_time_packet.encode())
+            self.logger.log_event('ADD_TIME',self.network.device_mac)
+        else:
+            print(f"Failed to give gift as gift returned:{gift}")
 
     async def raise_hand(self):
         print("Raise Hand")
-        await self.network.broadcast(b'RAISE_HAND')
-        self.queue.add_to_queue(self.device_name,self.network.device_mac)
-        self.network.log_event('raise_hand', self.network.device_mac)
-        pass
+        raise_hand_packet = f"RAISE_HAND:,{self.timekeeper.times_spoken}"
+        await self.network.broadcast(raise_hand_packet.encode())
+        self.queue.add_to_queue(self.network.device_mac,self.timekeeper.times_spoken)
+        self.queue.update_roster(self.network.device_mac,'times_spoken',self.timekeeper.times_spoken)
 
     async def end_time(self):
         print("End Time")
-        await self.network.broadcast(b'END_TIME')
-        self.network.log_event('end_time', self.network.device_mac)
+        end_time_packet = f"END_TIME:,{self.timekeeper.total_session_time},{self.timekeeper.allotted_time_left},{self.timekeeper.times_spoken}"
+        await self.network.broadcast(end_time_packet.encode())
+        self.logger.log_event('END_TIME',f"This Device:,{self.network.device_mac}")
+        #self.network.log_event('end_time', self.network.device_mac)
         self.timekeeper.calculate_speaker_timer()
         self.timekeeper.set_device_mode('active_listener')
-        self.network.respond_next_speaker()
+        
+        self.network.notify_next_speaker()
 
     def select_menu_item(self, menu, selection):
         item = self.menus[menu][selection]
