@@ -1,4 +1,4 @@
-from machine import SoftI2C, Pin
+from machine import SoftI2C, Pin, ADC
 import ssd1306
 import writer
 import freesans20
@@ -15,6 +15,8 @@ class Display:
         self.oled.show()
         self.font_writer = writer.Writer(self.oled, freesans20)
         self.last_time_update = 0
+        self.bat = ADC(Pin(1))
+        self.bat.atten(ADC.ATTN_11DB) # Set attenuation to 11dB for a range of 0-3.9V
 
     def show_text(self, text, line):
         self.oled.text(text, 0, line * 8)
@@ -23,6 +25,51 @@ class Display:
     def clear(self):
         self.oled.fill(0)
         self.oled.show()
+        
+    def get_battery_percentage(self, voltage):
+        min_voltage = 3.2
+        max_voltage = 4.2
+        if voltage < min_voltage:
+            return 0
+        elif voltage > max_voltage:
+            return 100
+        else:
+            percentage = (voltage - min_voltage) / (max_voltage - min_voltage) * 100
+            return percentage
+
+    def draw_battery(self, percentage):
+        x = 64
+        y = 1
+        width = 10
+        height = 7
+
+        # Draw the battery outline
+        self.oled.rect(x, y, width, height, 1)
+
+        # Calculate the fill width based on the percentage
+        fill_width = int(percentage / 100 * (width - 2))  # -2 to account for the outline thickness
+
+        # Draw the filled part of the battery
+        self.oled.fill_rect(x + 1, y + 1, fill_width, height - 2, 1)
+
+    def show_battery(self):
+        # Read the ADC value in microvolts
+        adc_uv = self.bat.read_uv()
+
+        # Convert microvolts to volts
+        v_adc = adc_uv / 1e6
+
+        # Calculate the battery voltage considering the voltage divider
+        v_batt = v_adc * (3 / 2)
+
+        # Calculate battery percentage
+        battery_percentage = self.get_battery_percentage(v_batt)
+
+        # Draw the battery level
+        self.draw_battery(battery_percentage)
+
+        # Print for debugging
+        print(f"Battery Voltage: {v_batt:.2f}V - {battery_percentage:.2f}%")
 
     def update_inactive_display(self, menu_items, current_selection, current_time, num_peers):
         #self.oled.fill(0)
@@ -66,8 +113,9 @@ class Display:
         self.oled.show()
 
     def update_hud(self, num_peers):
-        self.oled.fill_rect(100, 0, 28, 8, 0)  # Clear the area for the HUD
-        self.oled.text(f"Ps:{num_peers}", 90, 0)
+        self.oled.fill_rect(65, 0, 64, 8, 0)  # Clear the area for the HUD
+        battery = self.show_battery()
+        self.oled.text(f"Ps:{num_peers}", 75, 0)
         self.oled.show()
 
     def update_menu(self, menu_items, current_selection):

@@ -5,7 +5,7 @@ import time
 class Buzz:
     def __init__(self):
         print('Initializing Buzz class')
-        self.motor_pin = Pin(21, Pin.OUT)
+        self.motor_pin = Pin(0, Pin.OUT)
         self.motor_pin.value(0)
         self.pwm = PWM(self.motor_pin)
         self.pwm.freq(1000)
