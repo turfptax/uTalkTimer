@@ -5,11 +5,11 @@ class Timekeeper:
         self.start_time = time.time()
         self.last_update = time.time()-1
         
-        self.total_session_time = 0
+        self.total_session_time = 0 # Total Session length usually 60 min
         self.allotted_time_left = 0
         ###self.device_speaker_time_left = 0
         
-        self.device_timer = -100
+        self.device_timer = -100 # countown timer for talking turn usually 60 seconds
         self.current_time = 0
         self.allotted_time = 0
         ###self.total_time_per_speaker = 0
@@ -21,6 +21,7 @@ class Timekeeper:
         
         self.device_mode = 'inactive'
         self.times_spoken = 0
+        self.gift = 15 #number of seconds to give (vote add)
 
     def initialize_timer(self, session_duration, time_per_speaker):
         self.start_time = time.time()
@@ -60,11 +61,11 @@ class Timekeeper:
         return result
     
     def give_time(self):
-        if self.allotted_time_left >= 15:
-            self.allotted_time_left -= 15
+        if self.allotted_time_left >= self.gift:
+            self.allotted_time_left -= self.gift
         else:
             return False
-        return self.allotted_time_left
+        return self.gift
     
     def add_time(self,amount):
         self.device_timer += amount
@@ -116,3 +117,6 @@ class Timekeeper:
     
     def get_device_timer(self):
         return self.device_timer
+    
+    def update_device_timer(self,amount):
+        self.device_timer += amount

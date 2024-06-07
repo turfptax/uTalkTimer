@@ -126,11 +126,12 @@ class Network:
             #add_time_packet = f"ADD_TIME:,{gift},{self.timekeeper.allotted_time_left}"
             if len(parts) == 3:
                 self.menu.timekeeper.update_allotted_time_left(int(parts[1]))
-                if mac != self.device_mac:
-                    self.menu.queue.update_roster(mac,'time_left',int(parts[2]))
-                else:
+                if self.menu.timekeeper.device_mode == 'active_speaker':
                     print('----------------You Received A Gift!-------------------')
-                    self.timekeeper.update_allotted_time_left(int(parts[1]))
+                    print(f'part one: {int(parts[1])}')
+                    self.menu.timekeeper.update_device_timer(int(parts[1]))
+                else:
+                    pass
             else:
                 print("ADD_TIME packet format is incorrect")
 

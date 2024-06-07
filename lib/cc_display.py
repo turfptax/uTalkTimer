@@ -137,3 +137,4 @@ class Display:
         elif mode in ['active_speaker', 'active_listener']:
             #print(speaker_time, total_time, queue_status, mode, invert, allotted_time_left)
             self.update_session_display(speaker_time, total_time, queue_status, mode, invert, allotted_time_left)
+            self.update_hud(num_peers)
