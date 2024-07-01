@@ -15,12 +15,12 @@ class Menu:
         self.num_participants = settings.get('num_participants', 1)
         
         # List of names
-        self.names = ['Andre', 'Andre', 'Ardy', 'BJ', 'David',
-                      'Jacks', 'Mark', 'Rich', 'Sachi', 'Tory', 'Wayne', 'Wes', 'Yahia']
+        self.names = ['Ardy', 'BJ', 'David','Jacks', 'Mark',
+                      'Rich', 'Sachi', 'Tory', 'Wayne', 'Wes', 'Yahia']
         # Define the menu structure
         self.menus = {
-            'main': ['Session Settings', 'During Session', 'Device Settings', 'Feedback & Logs', 'Set Name','Exit'],
-            'Session Settings': ['Set Duration', 'Set Participants', 'Start Session', 'Back'],
+            'main': ['Session', 'During Session', 'Device Settings', 'Feedback & Logs', 'Set Name','Exit'],
+            'Session': ['Set Duration', 'Set Participants', 'Start Session', 'Back'],
             'Set Duration': ['30 minutes', '60 minutes', 'Custom', 'Back'],
             'During Session': ['Current Speaker Timer', 'Request to Speak Next', 'End/Pause Session', 'Back'],
             'Device Settings': ['Buzz Notifications', 'Display Brightness', 'Sound Volume', 'Back'],

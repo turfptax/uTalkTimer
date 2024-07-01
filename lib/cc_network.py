@@ -84,6 +84,7 @@ class Network:
                     self.menu.is_speaker_active = False
                     self.menu.buzz.short_buzz()
                     self.menu.logger.log_event('start_session', mac)
+                    self.menu.queue.set_moderator(mac)
                 except Exception as e:
                     self.menu.logger.log_event('Error',e)
         elif msg_str.startswith('RAISE_HAND'): #------------------ RAISE HAND
@@ -113,7 +114,7 @@ class Network:
                 self.menu.timekeeper.calculate_speaker_timer()
                 self.menu.timekeeper.set_device_mode('active_speaker')
                 self.menu.is_speaker_active = True
-                self.menu.buzz.short_buzz() # Buzz to notify you are next speaker
+                self.menu.buzz.buzz(1,2) # Buzz to notify you are next speaker
                 self.menu.logger.log_event('start_speaker', self.device_mac)  # Corrected
                 print("This device is the next speaker")
                 # Broadcast status update

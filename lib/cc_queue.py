@@ -5,6 +5,7 @@ class Queue:
         self.queue = []
         self.nice_name = 'nice_name'
         self.current_speaker = False
+        self.moderator = 'mac of moderator'
 
     def add_to_queue(self,mac,times_spoken):
         self.queue.append([mac,times_spoken,len(self.queue)])
@@ -20,7 +21,7 @@ class Queue:
             return next_speaker[0]
         else:
             print('nothing in the q')
-            return False
+            return self.moderator
         
     def update_roster(self,mac,attribute,value):
         if not mac in self.roster:
@@ -36,3 +37,6 @@ class Queue:
     def clear_queue(self):
         self.queue = []
         print("Queue cleared")
+        
+    def set_moderator(self, mod):
+        self.moderator = mod

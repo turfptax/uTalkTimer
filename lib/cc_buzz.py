@@ -32,14 +32,15 @@ class Buzz:
         time.sleep(.5)       # Buzz for 1 second
         self.pwm.duty(0)
 
-    #def buzz(self, pattern):
-    #    patterns = [[(1023, 0.05), (0, 0.05)],
-    #                [(1023, 0.0025), (750, 0.075), (500, 0.0125), (0, 0.0025)],
-    #                [(500, 0.05), (750, 0.05), (1023, 0.1), (750, 0.075), (500, 0.05), (0, 0.0725)]]
-    #    for duty, duration in patterns[pattern]:
-    #        self.pwm.duty(duty)
-    #        time.sleep(duration)
-    #    self.pwm.duty(0)
+    def buzz(self, pattern,number):
+        patterns = [[(1023, 0.05), (0, 0.05)],
+                    [(1023, 0.0025), (750, 0.075), (500, 0.0125), (0, 0.0025)],
+                    [(500, 0.05), (750, 0.05), (1023, 0.1), (750, 0.075), (500, 0.05), (0, 0.0725)]]
+        for _ in range(number):
+            for duty, duration in patterns[pattern]:
+                self.pwm.duty(duty)
+                time.sleep(duration)
+        self.pwm.duty(0)
 
     def update(self):
         # Update buzzing if needed
